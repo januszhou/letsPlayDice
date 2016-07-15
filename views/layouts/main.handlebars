@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Let's Play Dice</title>
+    <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css">
+</head>
+<script src="/node_modules/socket.io-client/socket.io.js"></script>
+<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+<body>
+    <div class="container">
+        {{#if errorMsg}}
+            <div class="alert alert-danger" role="alert">
+                <span class="glyphicon glyphicon-exclamation-sign" aria-hidden="true"></span>
+                <span class="sr-only">Error:</span>
+                {{errorMsg}}
+            </div>
+        {{/if}}
+
+        {{{body}}}
+    </div>
+</body>
+
+</html>
