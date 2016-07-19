@@ -1,0 +1,68 @@
+<div class="row">
+    <h1>Welcome to room {{ id }}</h1>
+    <div class="row" id="player-list">
+        <!--{{#each players}}-->
+            <!--<div class="row">-->
+                <!--<div class="col-sm-4">{{this.nick_name}}</div>-->
+                <!--<div class="col-sm-4">-->
+                    <!--{{#if this.ready}}-->
+                        <!--Ready-->
+                    <!--{{else}}-->
+                        <!--Not Ready-->
+                    <!--{{/if}}-->
+                <!--</div>-->
+                <!--<div class="col-sm-4">-->
+                    <!--{{#if this.self}}-->
+                    <!--<button class="btn btn-info" id="toggle-ready" data-id="{{this.id}}">Ready</button>-->
+                    <!--{{/if}}-->
+                <!--</div>-->
+            <!--</div>-->
+        <!--{{/each}}-->
+    </div>
+
+    <div class="row">
+        <a class="btn btn-default" href="/">Leave</a>
+    </div>
+
+</div>
+<script>
+
+    var socket = io();
+    var room = '{{ id }}';
+    socket.on('connect', function(){
+        var socketId = socket.id;
+        socket.emit('join', {roomId: room, socketId: socketId});
+    });
+
+    var updateView = function(players){
+        var playerHtml = '';
+
+        for(var i = 0; i <= players.length - 1; i++){
+            playerHtml += '<div class="row"><div class="col-sm-4">'
+            + players[i]['nick_name']
+            +'</div><div class="col-sm-4">'
+            + players[i]['ready']?'Ready': 'Not Ready'
+            +'</div>'
+            +'</div><div class="col-sm-4">'
+            + players[i]['ready']
+            +'</div></div>';
+        }
+
+        if(playerHtml){
+            $("#player-list").empty().html(playerHtml);
+        }
+    };
+
+    socket.on('updatePlayers', function(data){
+        var players = data;
+        console.log(data);
+
+        updateView(players);
+        playerHtml = '';
+//
+
+
+
+    });
+
+</script>

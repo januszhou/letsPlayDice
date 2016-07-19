@@ -1,10 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Let's Play Dice</title>
+    <link rel="stylesheet" href="/bower_components/bootstrap/dist/css/bootstrap.min.css">
 </head>
 <body>
+<div class="container">
 
+
+</div>
+<script src="/node_modules/socket.io-client/socket.io.js"></script>
+<script src="/bower_components/jquery/dist/jquery.min.js"></script>
+<script>
+    var socket = io();
+    $('form').submit(function(){
+        socket.emit('chat message', $('#m').val());
+        $('#m').val('');
+        return false;
+    });
+</script>
 </body>
 </html>

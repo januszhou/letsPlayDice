@@ -12,3 +12,13 @@ CREATE TABLE player (
   nick_name VARCHAR(255),
   socket_id VARCHAR(255)
 )
+
+-- Jul 15
+
+ALTER TABLE room ADD COLUMN number INT(10) NOT NULL;
+ALTER TABLE player ADD COLUMN ready INT(1) DEFAULT 0;
+ALTER TABLE player ADD COLUMN room_id INT(10) NOT NULL;
+
+-- Jul 19
+
+ALTER TABLE room ADD COLUMN status VARCHAR(255) DEFAULT 'waiting';
