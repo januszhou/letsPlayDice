@@ -1,29 +1,12 @@
 <div class="row">
-    <h1>Welcome to room {{ id }}</h1>
-    <div class="row" id="player-list">
-        <!--{{#each players}}-->
-            <!--<div class="row">-->
-                <!--<div class="col-sm-4">{{this.nick_name}}</div>-->
-                <!--<div class="col-sm-4">-->
-                    <!--{{#if this.ready}}-->
-                        <!--Ready-->
-                    <!--{{else}}-->
-                        <!--Not Ready-->
-                    <!--{{/if}}-->
-                <!--</div>-->
-                <!--<div class="col-sm-4">-->
-                    <!--{{#if this.self}}-->
-                    <!--<button class="btn btn-info" id="toggle-ready" data-id="{{this.id}}">Ready</button>-->
-                    <!--{{/if}}-->
-                <!--</div>-->
-            <!--</div>-->
-        <!--{{/each}}-->
-    </div>
+    <nav class="navbar navbar-default">
+        <div class="container">
+            <h1 class="text-center text-capitalize">Room {{ id }}</h1>
+        </div>
+        <!--<a class="text-right" href="/"><span class="glyphicon glyphicon-remove-sign"></span> Leave</a>-->
+    </nav>
 
-    <div class="row">
-        <a class="btn btn-default" href="/">Leave</a>
-    </div>
-
+    <div class="row" id="player-list"></div>
 </div>
 <script>
 
@@ -35,17 +18,27 @@
     });
 
     var updateView = function(players){
+        console.log(players);
         var playerHtml = '';
 
         for(var i = 0; i <= players.length - 1; i++){
-            playerHtml += '<div class="row"><div class="col-sm-4">'
-            + players[i]['nick_name']
-            +'</div><div class="col-sm-4">'
-            + players[i]['ready']?'Ready': 'Not Ready'
-            +'</div>'
-            +'</div><div class="col-sm-4">'
-            + players[i]['ready']
-            +'</div></div>';
+            var readyClass = players[i]['ready'] == 0? 'text-danger':'text-success';
+            var readyText = players[i]['ready'] == 0? 'Not Ready':'Ready';
+            var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['id'] + '>Ready</button>': '';
+            var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
+            playerHtml +=
+                    '<div class="'+ selfClass +'">'
+                    + '<div class="panel panel-default">'
+                    + '<div class="panel-heading text-center">' + players[i]['nick_name'] +'</div>'
+                    + '<div class="panel-body text-center">'
+                    + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
+                    + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
+                    + '<div>'
+                    + readyButton
+                    + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + '</div>';
         }
 
         if(playerHtml){
@@ -53,16 +46,16 @@
         }
     };
 
+    updateView({{{json players}}});
+
     socket.on('updatePlayers', function(data){
-        var players = data;
         console.log(data);
+        var selfObj = data['self'];
+        var othersObjs = data['others'];
+        othersObjs.unshift(selfObj);
+        console.log(othersObjs);
 
-        updateView(players);
-        playerHtml = '';
-//
-
-
-
+        updateView(othersObjs);
     });
 
 </script>

@@ -25,8 +25,12 @@ connection.connect();
 
 app.use('/bower_components', express.static('bower_components'));
 app.use('/node_modules', express.static('node_modules'));
+app.use('/content', express.static('content'));
 
-app.engine('handlebars', exphbs({defaultLayout: 'main'}));
+app.engine('handlebars', exphbs({
+    defaultLayout: 'main',
+    helpers: { json: function (context) { return JSON.stringify(context); } }
+}));
 app.set('view engine', 'handlebars');
 
 app.get('/', function(req, res){
