@@ -17,6 +17,18 @@
         socket.emit('join', {roomId: room, socketId: socketId});
     });
 
+    var getPlayers = function(data){
+        console.log(data);
+        var selfObj = data['self'];
+        var othersObjs = data['others'];
+
+        var playerList = [];
+        playerList.push(selfObj);
+        playerList = playerList.concat(othersObjs);
+
+        return playerList;
+    };
+
     var updateView = function(players){
         console.log(players);
         var playerHtml = '';
@@ -27,7 +39,7 @@
             var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['id'] + '>Ready</button>': '';
             var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
             playerHtml +=
-                    '<div class="'+ selfClass +'">'
+                    '<div class="'+ selfClass +' player_' + players[i]['id'] +'">'
                     + '<div class="panel panel-default">'
                     + '<div class="panel-heading text-center">' + players[i]['nick_name'] +'</div>'
                     + '<div class="panel-body text-center">'
@@ -46,16 +58,32 @@
         }
     };
 
-    updateView({{{json players}}});
+    updateView(getPlayers({{{json players}}}));
 
     socket.on('updatePlayers', function(data){
-        console.log(data);
-        var selfObj = data['self'];
-        var othersObjs = data['others'];
-        othersObjs.unshift(selfObj);
-        console.log(othersObjs);
+        updateView(getPlayers(data));
+    });
 
-        updateView(othersObjs);
+    $('.ready-button').on('click', function(){
+        var oldStatus = $('.ready-status').text().toLowerCase() == 'ready'?1:0;
+        var newStatus = oldStatus == 0? 1: 0;
+
+        socket.emit('ready', {'player_id': $(this).data('id'), 'room_id': '{{ id }}', ready: newStatus});
+    });
+
+    socket.on('player_ready', function(data){
+        console.log('player_ready', data);
+        var findClass = 'player_' + data;
+        var $readyStatus = $("." + findClass).find('.ready-status');
+        if($readyStatus.hasClass('text-danger')){
+            $readyStatus.removeClass('text-danger');
+            $readyStatus.addClass('text-success');
+            $readyStatus.text('Ready');
+        } else {
+            $readyStatus.removeClass('text-success');
+            $readyStatus.addClass('text-danger');
+            $readyStatus.text('Not Ready');
+        }
     });
 
 </script>

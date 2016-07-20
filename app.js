@@ -163,6 +163,7 @@ io.on('connection', function(socket){
     });
 
     socket.on('ready', function(req){
+        console.log('ready', req);
         var roomId = req['room_id'];
         var playerId = req['player_id'];
         var ready = req['ready'];
