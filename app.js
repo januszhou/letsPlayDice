@@ -41,7 +41,7 @@ app.get('/slice', function(req, res){
     res.render('slice');
 });
 
-var currentUserId = null;
+var connectedUsers = {};
 
 var randomNick = function(){
     var text = "";
@@ -115,50 +115,75 @@ var updatePlayer = function(connection, playerId, updateObj, callback){
     });
 };
 
+var insertPlayer = function(connection, playerObj, callback){
+    connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
+        if(!err){
+            callback(err, result);
+        }
+    });
+};
+
 var getPlayersData = function(connection, roomId, callback){
     getPlayers(connection, roomId, function(err, result){
-        var players = {self:null, others: []};
+        if(result){
+            var players = [];
 
-        for(var i = 0; i<= result.length - 1; i++){
-            var player = {};
-            player['nick_name'] = result[i]['nick_name'];
-            player['ready'] = result[i]['ready'];
-            player['id'] = result[i]['id'];
+            for(var i = 0; i<= result.length - 1; i++){
+                var player = {};
+                player['nick_name'] = result[i]['nick_name'];
+                player['ready'] = result[i]['ready'];
+                player['id'] = result[i]['id'];
 
-            if(result[i]['id'] == currentUserId){
-                players['self'] = player;
-            } else {
-                players['others'].push(player);
+                players.push(player);
             }
-        }
 
-        callback(players);
+            callback(players);
+        }
     });
 };
 
 var sockets = {};
 
 io.on('connection', function(socket){
+    var uid = null;
+
     sockets[socket.id] = socket;
-    var currentRoomId = null;
     /**
      * Front-end emit room event when player join a room
      */
     socket.on('join', function(obj){
+        console.log('new join', obj);
         socket.join('room_' + obj.roomId);
-        currentRoomId = obj.roomId;
+        var currentRoomId = obj.roomId;
+        var UUID = obj.UUID;
+        uid = UUID;
+
+        var playerObj = {room_id: obj.roomId, nick_name: randomNick(), socket_id: '/#' + obj.socketId};
+
+        insertPlayer(connection, playerObj, function(err, result){
+            /**
+             * Emit new player, and update others view
+             */
+            connectedUsers[UUID] = {userId: result.insertId, roomId: currentRoomId};
+
+            socket.to('room_' + currentRoomId).emit('newPlayerId', result.insertId);
+
+            getPlayersData(connection, obj.roomId, function(players){
+                socket.to('room_' + currentRoomId).emit('updatePlayers', players);
+            });
+        });
         /**
          * Update player socket id
          */
-        updatePlayer(connection, currentUserId, {socket_id: '/#' + obj.socketId}, function(err, result){
+    });
 
-        });
-
-        /**
-         * Emit new player, and update others view
-         */
-        getPlayersData(connection, obj.roomId, function(players){
-            socket.to('room_' + obj.roomId).emit('updatePlayers', players);
+    socket.on('refresh', function(data){
+        updatePlayer(connection, data.userId, {socket_id: '/#' + data.socketId}, function(err, result){
+            console.log('got refresh', data);
+            socket.join('room_' + data.roomId);
+            getPlayersData(connection, data.roomId, function(players){
+                socket.to('room_' + data.roomId).emit('updatePlayers', players);
+            });
         });
     });
 
@@ -178,39 +203,42 @@ io.on('connection', function(socket){
 
     });
 
-    console.log('a user connected');
-    // socket.emit('player_join', players);
-
     socket.on('disconnect', function(){
 
-        deletePlayer(connection, socket.id, function(err, result){
-            if(!err){
-                console.log('a user disconnected');
-            }
-        });
+        setTimeout(function () {
+            if (connectedUsers.hasOwnProperty(uid)) {
+                var userData = connectedUsers[uid];
+                deletePlayer(connection, socket.id, function(err, result){
+                    if(!err){
+                        console.log('a user disconnected');
 
-        /**
-         * Emit player left, and update others view
-         */
-        getPlayersData(connection, currentRoomId, function(players){
-            socket.to('room_' + currentRoomId).emit('updatePlayers', players);
-        });
+                        /**
+                         * Emit player left, and update others view
+                         */
+                        getPlayersData(connection, userData['roomId'], function(players){
+                            socket.to('room_' + userData['roomId']).emit('updatePlayers', players);
+                        });
+                    }
+                });
+            }
+        }, 5000);
     });
 });
 
 
 app.get('/room/:id', function(req, res){
     var id = req.params.id;
+    res.render('room', {roomId: id});
 
-    var playerObj = {room_id: id, nick_name: randomNick()};
-    connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
-        if(!err){
-            currentUserId = result.insertId;
-            getPlayersData(connection, id, function(players){
-                res.render('room', {id: id, players: players});
-            });
-        }
-    });
+    // var playerObj = {room_id: id, nick_name: randomNick()};
+    // connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
+    //     if(!err){
+    //         var currentUserId = result.insertId;
+    //         getPlayersData(connection, id, function(players){
+    //             res.render('room', {roomId: id, players: players, userId: currentUserId});
+    //         });
+    //     }
+    // });
 });
 
 http.listen(3000, function(){

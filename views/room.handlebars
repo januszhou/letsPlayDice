@@ -1,7 +1,7 @@
 <div class="row">
     <nav class="navbar navbar-default">
         <div class="container">
-            <h1 class="text-center text-capitalize">Room {{ id }}</h1>
+            <h1 class="text-center text-capitalize">Room {{ roomId }}</h1>
         </div>
         <!--<a class="text-right" href="/"><span class="glyphicon glyphicon-remove-sign"></span> Leave</a>-->
     </nav>
@@ -9,24 +9,63 @@
     <div class="row" id="player-list"></div>
 </div>
 <script>
-
+    $.cookie.json = true;
     var socket = io();
-    var room = '{{ id }}';
+    var room = '{{ roomId }}';
+
+    var generateHash = function(len) {
+        var symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+        var hash = '';
+        for (var i = 0; i < len; i++) {
+            var symIndex = Math.floor(Math.random() * symbols.length);
+            hash += symbols.charAt(symIndex);
+        }
+        return hash;
+    };
+
     socket.on('connect', function(){
         var socketId = socket.id;
-        socket.emit('join', {roomId: room, socketId: socketId});
+        var emitObject = {roomId: room, socketId: socketId};
+        var cookie = $.cookie('dice');
+        if(!cookie){
+            var UUID = generateHash(10);
+            $.cookie('dice', {UUID: UUID});
+            emitObject['UUID'] = UUID;
+            socket.emit('join', emitObject);
+        } else {
+            emitObject['UUID'] = cookie['UUID'];
+            emitObject['userId'] = cookie['userId'];
+            socket.emit('refresh', emitObject);
+        }
+    });
+
+    /**
+     * Update current user id
+     */
+    socket.on('newPlayerId', function(id){
+        console.log('new player id', id);
+        var cookie = $.cookie('dice');
+        cookie['userId'] = id;
+        $.cookie('dice', cookie);
     });
 
     var getPlayers = function(data){
+        var cookie = $.cookie('dice');
+        var currentUser = cookie['userId'];
+        var currentUserObj = null;
+        for(var i = 0; i <= data.length - 1; i++){
+            if(data[i]['id'] == currentUser){
+                currentUserObj = data[i];
+                delete data[i];
+            }
+        }
+
+        if(currentUserObj){
+            data.unshift(currentUserObj);
+        }
+
         console.log(data);
-        var selfObj = data['self'];
-        var othersObjs = data['others'];
-
-        var playerList = [];
-        playerList.push(selfObj);
-        playerList = playerList.concat(othersObjs);
-
-        return playerList;
+        return data;
     };
 
     var updateView = function(players){
@@ -34,6 +73,9 @@
         var playerHtml = '';
 
         for(var i = 0; i <= players.length - 1; i++){
+            if(!players[i]){
+                continue;
+            }
             var readyClass = players[i]['ready'] == 0? 'text-danger':'text-success';
             var readyText = players[i]['ready'] == 0? 'Not Ready':'Ready';
             var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['id'] + '>Ready</button>': '';
@@ -58,9 +100,10 @@
         }
     };
 
-    updateView(getPlayers({{{json players}}}));
+    //updateView(getPlayers({{{json players}}}));
 
     socket.on('updatePlayers', function(data){
+        console.log(data);
         updateView(getPlayers(data));
     });
 
