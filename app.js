@@ -11,16 +11,8 @@ var bodyParser = require('body-parser');
 app.use(bodyParser.json()); // support json encoded bodies
 app.use(bodyParser.urlencoded({ extended: true })); // support encoded bodies
 
-
-var mysql      = require('mysql');
-var connection = mysql.createConnection({
-    host     : 'localhost',
-    user     : 'homestead',
-    password : 'secret',
-    database : 'dice'
-});
-
-connection.connect();
+var storage = require('node-persist');
+storage.initSync();
 
 
 app.use('/bower_components', express.static('bower_components'));
@@ -41,21 +33,136 @@ app.get('/slice', function(req, res){
     res.render('slice');
 });
 
-var connectedUsers = {};
-
-var randomNick = function(){
-    var text = "";
-    var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-
-    for( var i=0; i < 5; i++ )
-        text += possible.charAt(Math.floor(Math.random() * possible.length));
-
-    return text;
-};
-
 var randomRoom = function(){
     return Math.floor(Math.random() * (9999 - 1000 + 1)) + 1000;
 };
+
+
+/**
+ * Player Object
+ * @constructor
+ */
+var Player = function(){
+    var randomNick = function(){
+        var text = "";
+        var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+        for( var i=0; i < 5; i++ )
+            text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+        return text;
+    };
+
+    this.nickName = randomNick();
+    this.round = null;
+    this.owner = false;
+    this.UID = null;
+};
+
+Player.prototype.updateNick = function(nick){
+    this.nickName = nick;
+};
+
+Player.prototype.createRound = function(){
+    var getRandomArbitrary = function(min, max) {
+        return Math.random() * (max - min) + min;
+    };
+
+    var round = [];
+
+    for(var i = 0; i <= 4; i++){
+        round.push(getRandomArbitrary(1, 5));
+    }
+
+    this.round = round;
+};
+
+Player.prototype.updateOwner = function(){
+    this.owner = true;
+};
+
+Player.prototype.updateUID = function(UID){
+    this.UID = UID;
+};
+
+/**
+ * Room Object
+ * @constructor
+ */
+
+var Room = function(id){
+    this.status = 'waiting';
+    this.players = [];
+    this.password = false;
+    this.games = 0;
+    this.id = id;
+};
+
+Room.prototype.start = function(){
+    this.status = 'playing';
+};
+
+Room.prototype.addPlayer = function(player){
+    this.players.push(player);
+};
+
+Room.prototype.removePlayerByUID = function(UID){
+    if(this.players.length){
+        for(var i = 0; i<=this.players.length - 1; i++){
+            if(this.players[i].UID === UID){
+                this.players.splice(i, 1);
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
+Room.prototype.newRound = function(){
+    this.games += 1;
+};
+
+Room.prototype.isAuthorized = function(){
+    // Start with no password
+};
+
+
+var Rooms = function(){
+    this.rooms = [];
+    this.count = 0;
+};
+
+Rooms.prototype.addRoom = function(roomId){
+    this.rooms.push(new Room(roomId));
+};
+
+Rooms.prototype.deleteRoom = function(roomId){
+    if(this.rooms.length){
+        for(var i = 0; i<=this.rooms.length - 1; i++){
+            if(this.rooms[i].id == roomId){
+                this.rooms.splice(i, 1);
+                return true;
+            }
+        }
+    }
+
+    return false;
+};
+
+Rooms.prototype.getRooms = function(){
+    var rooms = storage.getItemSync('rooms');
+    if(rooms){
+        this.rooms = rooms;
+    } else {
+        storage.setItem('rooms', new Rooms());
+    }
+};
+
+var rooms = new Rooms();
+rooms.getRooms();
+
+var connectedUsers = {};
 
 /**
  * Create room from home page
