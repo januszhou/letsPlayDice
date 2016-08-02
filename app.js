@@ -78,6 +78,10 @@ Player.prototype.updateSocket = function(socketId){
     this.socketId = socketId;
 };
 
+Player.prototype.updateReady = function(ready){
+    this.ready = ready?true:false;
+};
+
 Player.prototype.createRound = function(){
     var getRandomArbitrary = function(min, max) {
         return Math.random() * (max - min) + min;
@@ -254,90 +258,10 @@ setInterval(function() {
  */
 app.post('/room', function(req, res){
     var roomId = req.body.room;
-    // connection.query("select * from room where number = " + room, function(err, rows, fields){
-    //    if(rows && rows.length > 0){
-    //        /**
-    //         * If room exists, Insert player into that room, then redirect to that room
-    //         */
-    //
-    //        var playerObj = {room_id: room, nick_name: randomNick()};
-    //        connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
-    //            if(!err){
-    //                res.redirect('/room/' + room);
-    //            }
-    //        });
-    //
-    //    } else {
-    //        /**
-    //         * Room not exist, we create a new room
-    //         */
-    //        var newRoomObj  = {password: null, hash: null, number: randomRoom()};
-    //        var createNewRoom = connection.query('INSERT INTO room SET ?', newRoomObj, function(err, result) {
-    //
-    //            if(!err){
-    //                /**
-    //                 * Insert player into that room
-    //                 */
-    //                var playerObj = {room_id: result.insertId, nick_name: randomNick()};
-    //                connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
-    //                    res.redirect('/room/' + randomRoom);
-    //                });
-    //            }
-    //        });
-    //
-    //    }
-    // });
-
     res.redirect('/room/' + room.id);
 });
 
-// var deletePlayer = function(connection, socketId,  callback){
-//     connection.query("delete from player where socket_id = ? ", socketId, function(err, result){
-//         callback(err, result);
-//     });
-// };
-//
-// var getPlayers = function(connection, roomId,  callback){
-//     connection.query("select * from player where room_id = ? ", roomId, function(err, result){
-//         callback(err, result);
-//     });
-// };
-//
-// var updatePlayer = function(connection, playerId, updateObj, callback){
-//     connection.query("update player set ? where id = ? ",[updateObj, playerId], function(err, result){
-//         callback(err, result);
-//     });
-// };
-//
-// var insertPlayer = function(connection, playerObj, callback){
-//     connection.query('INSERT INTO player SET ?', playerObj, function(err, result) {
-//         if(!err){
-//             callback(err, result);
-//         }
-//     });
-// };
-
-// var getPlayersData = function(connection, roomId, callback){
-//     getPlayers(connection, roomId, function(err, result){
-//         if(result){
-//             var players = [];
-//
-//             for(var i = 0; i<= result.length - 1; i++){
-//                 var player = {};
-//                 player['nick_name'] = result[i]['nick_name'];
-//                 player['ready'] = result[i]['ready'];
-//                 player['id'] = result[i]['id'];
-//
-//                 players.push(player);
-//             }
-//
-//             callback(players);
-//         }
-//     });
-// };
-
 io.on('connection', function(socket){
-
     /**
      * Front-end emit room event when player join a room
      */
@@ -358,34 +282,25 @@ io.on('connection', function(socket){
 
         player.updateLeaveStatus(false);
         player.updateSocket('/#' + obj.socketId);
-        socket.to('room_' + obj.roomId).emit('updatePlayers', room.players);
+
+        io.in('room_' + obj.roomId).emit('updatePlayers', room.players);
     });
 
-    // socket.on('refresh', function(data){
-    //     updatePlayer(connection, data.userId, {socket_id: '/#' + data.socketId}, function(err, result){
-    //         console.log('got refresh', data);
-    //         socket.join('room_' + data.roomId);
-    //         getPlayersData(connection, data.roomId, function(players){
-    //             socket.to('room_' + data.roomId).emit('updatePlayers', players);
-    //         });
-    //     });
-    // });
+    socket.on('ready', function(req){
+        console.log('ready', req);
+        var roomId = req['room_id'];
+        var playerId = req['player_id'];
+        var ready = req['ready'];
+        console.log('update player is ready');
 
-    // socket.on('ready', function(req){
-    //     console.log('ready', req);
-    //     var roomId = req['room_id'];
-    //     var playerId = req['player_id'];
-    //     var ready = req['ready'];
-    //     console.log('update player is ready');
-    //
-    //     /**
-    //      * Update database set player ready
-    //      */
-    //     updatePlayer(connection, playerId, {ready: ready}, function(err, result){
-    //         socket.to('room_' + roomId).emit('player_ready', playerId);
-    //     });
-    //
-    // });
+        var room = rooms.getRoom(roomId);
+        var player = room.getPlayer(playerId);
+
+        player.updateReady(ready);
+
+        io.in('room_' + roomId).emit('updatePlayers', room.players);
+
+    });
 
     socket.on('disconnect', function(){
         var player = rooms.getPlayerBySocketId(socket.id);
@@ -436,8 +351,6 @@ app.get('/room/:id', function(req, res){
     if(!existPlayer){
         room.addPlayer(player);
     }
-
-    console.log('rooms', rooms);
 
     res.render('room', {roomId: roomId, player: player});
 });

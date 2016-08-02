@@ -9,106 +9,86 @@
     <div class="row" id="player-list"></div>
 </div>
 <script>
-    $.cookie.json = true;
-    var socket = io();
-    var roomId = '{{ roomId }}';
-    var player = {{{json player}}};
+    $(document).ready(function(){
+        $.cookie.json = true;
+        var socket = io();
+        var roomId = '{{ roomId }}';
+        var player = {{{json player}}};
 
-    $.cookie('dice', {roomId: roomId, player: player});
+        $.cookie('dice', {roomId: roomId, player: player});
 
-    socket.on('connect', function(){
-        var socketId = socket.id;
-        socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID});
-    });
+        socket.on('connect', function(){
+            var socketId = socket.id;
+            socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID});
+        });
 
-    /**
-     * Update current user id
-     */
-    socket.on('newPlayerId', function(id){
-        console.log('new player id', id);
-        var cookie = $.cookie('dice');
-        cookie['userId'] = id;
-        $.cookie('dice', cookie);
-    });
-
-    var getPlayers = function(data){
-        var cookie = $.cookie('dice');
-        var currentUser = cookie['userId'];
-        var currentUserObj = null;
-        for(var i = 0; i <= data.length - 1; i++){
-            if(data[i]['id'] == currentUser){
-                currentUserObj = data[i];
-                delete data[i];
+        var getPlayers = function(data){
+            var cookie = $.cookie('dice');
+            var currentUserId = cookie.player.UID;
+            var currentUserObj = null;
+            for(var i = 0; i <= data.length - 1; i++){
+                if(data[i].UID == currentUserId){
+                    currentUserObj = data[i];
+                    delete data[i];
+                }
             }
-        }
 
-        if(currentUserObj){
-            data.unshift(currentUserObj);
-        }
-
-        console.log(data);
-        return data;
-    };
-
-    var updateView = function(players){
-        console.log(players);
-        var playerHtml = '';
-
-        for(var i = 0; i <= players.length - 1; i++){
-            if(!players[i]){
-                continue;
+            if(currentUserObj){
+                data.unshift(currentUserObj);
             }
-            var readyClass = players[i]['ready'] == 0? 'text-danger':'text-success';
-            var readyText = players[i]['ready'] == 0? 'Not Ready':'Ready';
-            var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['id'] + '>Ready</button>': '';
-            var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
-            playerHtml +=
-                    '<div class="'+ selfClass +' player_' + players[i]['id'] +'">'
-                    + '<div class="panel panel-default">'
-                    + '<div class="panel-heading text-center">' + players[i]['nick_name'] +'</div>'
-                    + '<div class="panel-body text-center">'
-                    + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
-                    + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
-                    + '<div>'
-                    + readyButton
-                    + '</div>'
-                    + '</div>'
-                    + '</div>'
-                    + '</div>';
-        }
 
-        if(playerHtml){
-            $("#player-list").empty().html(playerHtml);
-        }
-    };
+            return data;
+        };
 
-    //updateView(getPlayers({{{json players}}}));
+        var updateView = function(players){
+            console.log(players);
+            var playerHtml = '';
 
-    socket.on('updatePlayers', function(data){
-        console.log(data);
-        updateView(getPlayers(data));
+            for(var i = 0; i <= players.length - 1; i++){
+                if(!players[i]){
+                    continue;
+                }
+                var readyClass = players[i]['ready']? 'text-success': 'text-danger';
+                var readyText = players[i]['ready']? 'Ready': 'Not Ready';
+                var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['UID'] + '>Ready</button>': '';
+                var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
+                playerHtml +=
+                        '<div class="'+ selfClass +' player_' + players[i]['UID'] +'">'
+                        + '<div class="panel panel-default">'
+                        + '<div class="panel-heading text-center">' + players[i]['nickName'] +'</div>'
+                        + '<div class="panel-body text-center">'
+                        + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
+                        + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
+                        + '<div>'
+                        + readyButton
+                        + '</div>'
+                        + '</div>'
+                        + '</div>'
+                        + '</div>';
+            }
+
+            if(playerHtml){
+                $("#player-list").empty().html(playerHtml);
+            }
+
+            $('.ready-button').on('click', function(){
+                var UID = $(this).data('id');
+                console.log($('.player_' + UID).find('.ready-status').text());
+                var oldStatus = $('.player_' + UID).find('.ready-status').text().toLowerCase() == 'ready'?1:0;
+                var newStatus = !oldStatus;
+
+                socket.emit('ready', {'player_id': UID, 'room_id': roomId, ready: newStatus});
+                console.log('emitted ready', {'player_id': $(this).data('id'), 'room_id': roomId, ready: newStatus});
+            });
+        };
+
+        socket.on('updatePlayers', function(data){
+            console.log(data);
+            updateView(getPlayers(data));
+        });
+
+        socket.on('hello', function(data){
+            console.log(data);
+        });
     });
-
-    $('.ready-button').on('click', function(){
-        var oldStatus = $('.ready-status').text().toLowerCase() == 'ready'?1:0;
-        var newStatus = oldStatus == 0? 1: 0;
-
-        socket.emit('ready', {'player_id': $(this).data('id'), 'room_id': '{{ id }}', ready: newStatus});
-    });
-
-    socket.on('player_ready', function(data){
-        console.log('player_ready', data);
-        var findClass = 'player_' + data;
-        var $readyStatus = $("." + findClass).find('.ready-status');
-        if($readyStatus.hasClass('text-danger')){
-            $readyStatus.removeClass('text-danger');
-            $readyStatus.addClass('text-success');
-            $readyStatus.text('Ready');
-        } else {
-            $readyStatus.removeClass('text-success');
-            $readyStatus.addClass('text-danger');
-            $readyStatus.text('Not Ready');
-        }
-    });
-
 </script>
