@@ -231,13 +231,21 @@ Rooms.prototype.getPlayerBySocketId = function(socketId){
     for(var i = 0; i<=this.rooms.length - 1; i++){
         for(var j = 0; j<=this.rooms[i].players.length - 1; j++){
             if(this.rooms[i].players[j].socketId == socketId){
+                var room = this.rooms[i];
+                if(room instanceof Room){
+                    // nothing
+                } else {
+                    room.__proto__ = Room.prototype;
+                }
+
                 var player = this.rooms[i].players[j];
                 if(player instanceof Player){
-                    return player;
+                    // nothing
                 } else {
                     player.__proto__ = Player.prototype;
-                    return player;
                 }
+
+                return {room: room, player: player};
             }
         }
     }
@@ -303,15 +311,18 @@ io.on('connection', function(socket){
     });
 
     socket.on('disconnect', function(){
-        var player = rooms.getPlayerBySocketId(socket.id);
-        if(!player){
+        var mixData = rooms.getPlayerBySocketId(socket.id);
+        if(!mixData.player){
             return null;
         }
 
-        player.updateLeaveStatus(true);
-        console.log(player);
+        mixData.player.updateLeaveStatus(true);
         setTimeout(function () {
-            console.log('timeout player', player);
+            if(mixData.player.leave){
+                mixData.room.removePlayerByUID(mixData.player.UID);
+                io.in('room_' + mixData.room.id).emit('updatePlayers', mixData.room.players);
+                console.log('User left');
+            }
         }, 5000);
     });
 });
