@@ -11,32 +11,14 @@
 <script>
     $.cookie.json = true;
     var socket = io();
-    var room = '{{ roomId }}';
+    var roomId = '{{ roomId }}';
+    var player = {{{json player}}};
 
-    var generateHash = function(len) {
-        var symbols = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
-        var hash = '';
-        for (var i = 0; i < len; i++) {
-            var symIndex = Math.floor(Math.random() * symbols.length);
-            hash += symbols.charAt(symIndex);
-        }
-        return hash;
-    };
+    $.cookie('dice', {roomId: roomId, player: player});
 
     socket.on('connect', function(){
         var socketId = socket.id;
-        var emitObject = {roomId: room, socketId: socketId};
-        var cookie = $.cookie('dice');
-        if(!cookie){
-            var UUID = generateHash(10);
-            $.cookie('dice', {UUID: UUID});
-            emitObject['UUID'] = UUID;
-            socket.emit('join', emitObject);
-        } else {
-            emitObject['UUID'] = cookie['UUID'];
-            emitObject['userId'] = cookie['userId'];
-            socket.emit('refresh', emitObject);
-        }
+        socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID});
     });
 
     /**
