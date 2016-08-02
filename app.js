@@ -84,13 +84,13 @@ Player.prototype.updateReady = function(ready){
 
 Player.prototype.createRound = function(){
     var getRandomArbitrary = function(min, max) {
-        return Math.random() * (max - min) + min;
+        return Math.floor(Math.random() * (max - min) + min);
     };
 
     var round = [];
 
     for(var i = 0; i <= 4; i++){
-        round.push(getRandomArbitrary(1, 5));
+        round.push(getRandomArbitrary(1, 6));
     }
 
     this.round = round;
@@ -119,6 +119,28 @@ var Room = function(id){
 
 Room.prototype.start = function(){
     this.status = 'playing';
+    for(var i = 0; i <= this.players.length - 1; i++){
+        this.players[i].createRound();
+    }
+    this.games += 1;
+};
+
+/**
+ * Reset round
+ */
+Room.prototype.result = function(){
+    this.status = 'result';
+};
+
+Room.prototype.waiting = function(){
+    this.status = 'waiting';
+    for(var i = 0; i <= this.players.length - 1; i++){
+        this.players[i].round = [];
+    }
+
+    /**
+     * TODO: reset everyone ready to false
+     */
 };
 
 Room.prototype.addPlayer = function(player){
@@ -162,6 +184,22 @@ Room.prototype.newRound = function(){
 
 Room.prototype.isAuthorized = function(){
     // Start with no password
+};
+
+Room.prototype.assignOwner = function(){
+     var isFindOwner = false;
+
+    for(var i = 0; i<=this.players.length - 1; i++){
+        if(this.players[i].owner){
+            isFindOwner = true;
+        }
+    }
+
+    if(!isFindOwner){
+        if(this.players.length){
+            this.players[0].owner = true;
+        }
+    }
 };
 
 
@@ -270,6 +308,19 @@ app.post('/room', function(req, res){
 });
 
 io.on('connection', function(socket){
+    var updatePlayer = function(roomId){
+        var room = rooms.getRoom(roomId);
+        if(!room){
+            return null;
+        }
+
+        /**
+         * Before we update players, we assign owner
+         */
+        room.assignOwner();
+
+        io.in('room_' + roomId).emit('updatePlayers', room);
+    };
     /**
      * Front-end emit room event when player join a room
      */
@@ -291,7 +342,7 @@ io.on('connection', function(socket){
         player.updateLeaveStatus(false);
         player.updateSocket('/#' + obj.socketId);
 
-        io.in('room_' + obj.roomId).emit('updatePlayers', room.players);
+        updatePlayer(obj.roomId);
     });
 
     socket.on('ready', function(req){
@@ -306,8 +357,49 @@ io.on('connection', function(socket){
 
         player.updateReady(ready);
 
-        io.in('room_' + roomId).emit('updatePlayers', room.players);
+        updatePlayer(roomId);
 
+    });
+
+    socket.on('gameStart', function(req){
+        var room = rooms.getRoom(req.roomId);
+
+        if(!room){
+            return null;
+        }
+
+        /**
+         * TODO: Validate all player ready status
+         */
+
+        room.start();
+
+        updatePlayer(req.roomId);
+
+    });
+
+    socket.on('gameResult', function(req){
+        var room = rooms.getRoom(req.roomId);
+
+        if(!room){
+            return null;
+        }
+
+        room.result();
+
+        updatePlayer(req.roomId);
+    });
+
+    socket.on('gameRestart', function(req){
+        var room = rooms.getRoom(req.roomId);
+
+        if(!room){
+            return null;
+        }
+
+        room.waiting();
+
+        updatePlayer(req.roomId);
     });
 
     socket.on('disconnect', function(){
@@ -320,10 +412,10 @@ io.on('connection', function(socket){
         setTimeout(function () {
             if(mixData.player.leave){
                 mixData.room.removePlayerByUID(mixData.player.UID);
-                io.in('room_' + mixData.room.id).emit('updatePlayers', mixData.room.players);
+                updatePlayer(mixData.room.id);
                 console.log('User left');
             }
-        }, 5000);
+        }, 2000);
     });
 });
 

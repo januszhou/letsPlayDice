@@ -7,6 +7,8 @@
     </nav>
 
     <div class="row" id="player-list"></div>
+    <div class="row" id="playing"></div>
+    <div class="row" id="play-result"></div>
 </div>
 <script>
     $(document).ready(function(){
@@ -29,7 +31,7 @@
             for(var i = 0; i <= data.length - 1; i++){
                 if(data[i].UID == currentUserId){
                     currentUserObj = data[i];
-                    delete data[i];
+                    data.splice(i, 1);
                 }
             }
 
@@ -40,55 +42,154 @@
             return data;
         };
 
-        var updateView = function(players){
-            console.log(players);
-            var playerHtml = '';
+        var updateView = function(data){
+            var players = getPlayers(data.players);
+            if(data.status == 'waiting'){
+                $("#playing").empty().hide();
+                $("#play-result").empty().hide();
 
-            for(var i = 0; i <= players.length - 1; i++){
-                if(!players[i]){
-                    continue;
+                var playerHtml = '';
+                var allReady = true;
+                for(var i = 0; i <= players.length - 1; i++){
+                    if(!players[i]){
+                        continue;
+                    }
+
+                    allReady &= players[i].ready;
+                    var readyClass = players[i]['ready']? 'text-success': 'text-danger';
+                    var readyText = players[i]['ready']? 'Ready': 'Not Ready';
+                    var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['UID'] + ' style="width: 100px">Ready</button>': '';
+                    var ownerButton = (i == 0 && players[i].owner)?'<div><button class="btn btn-success start-button" style="width: 100px; margin-top: 10px;" disabled = "disabled">Start</button></div>':'';
+                    var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
+                    playerHtml +=
+                            '<div class="'+ selfClass +' player_' + players[i]['UID'] +'">'
+                            + '<div class="panel panel-default">'
+                            + '<div class="panel-heading text-center">' + players[i]['nickName'] +'</div>'
+                            + '<div class="panel-body text-center">'
+                            + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
+                            + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
+                            + '<div>'
+                            + readyButton
+                            + '</div>'
+                            + ownerButton
+                            + '</div>'
+                            + '</div>'
+                            + '</div>';
                 }
-                var readyClass = players[i]['ready']? 'text-success': 'text-danger';
-                var readyText = players[i]['ready']? 'Ready': 'Not Ready';
-                var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['UID'] + '>Ready</button>': '';
-                var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
-                playerHtml +=
-                        '<div class="'+ selfClass +' player_' + players[i]['UID'] +'">'
-                        + '<div class="panel panel-default">'
-                        + '<div class="panel-heading text-center">' + players[i]['nickName'] +'</div>'
-                        + '<div class="panel-body text-center">'
-                        + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
-                        + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
-                        + '<div>'
-                        + readyButton
+
+                if(playerHtml){
+                    $("#player-list").empty().html(playerHtml).show();
+                }
+
+                $('.ready-button').on('click', function(){
+                    var UID = $(this).data('id');
+                    var oldStatus = $('.player_' + UID).find('.ready-status').text().toLowerCase() == 'ready'?1:0;
+                    var newStatus = !oldStatus;
+
+                    socket.emit('ready', {'player_id': UID, 'room_id': roomId, ready: newStatus});
+                });
+
+                if(allReady){
+                    $('.start-button')
+                        .prop('disabled', null)
+                        .on('click', function(e){
+                            e.preventDefault();
+                            socket.emit('gameStart', {'roomId': roomId});
+                        });
+                }
+            } else if(data.status == 'playing'){
+                $("#player-list").empty().hide();
+                $("#play-result").empty().hide();
+
+                var player = players[0];
+
+                var playingHtml =
+                        '<div class="row text-center" style="margin-top: 50px; margin-bottom: 100px"><h2>Your Round</h2></div>'
+                        + '<div class="row">';
+
+
+                for(var i = 0; i <= player.round.length - 1; i++){
+                    playingHtml +=
+                            '<div class="col-xs-2 ' + (i == 0?'col-xs-offset-1':'') +'"><img class="img-responsive center-block img-rounded" src="/content/img/dice_' + player.round[i] + '.png"></div>';
+                }
+
+                playingHtml += '<div class="col-xs-1"></div>'
                         + '</div>'
-                        + '</div>'
-                        + '</div>'
+                        + '<div class="row" style="margin-top: 100px">'
+                        + '<button class="btn btn-danger center-block btn-lg doubt-button">Doubt</button>'
                         + '</div>';
+
+                if(playingHtml){
+                    $("#playing").empty().html(playingHtml).show();
+                }
+
+                $('.doubt-button').on('click', function(e){
+                    e.preventDefault();
+                    socket.emit('gameResult', {'roomId': roomId});
+                });
+
+            } else if(data.status == 'result'){
+                $("#player-list").empty().hide();
+                $("#playing").empty().hide();
+
+                var result = {
+                    dice1: 0,
+                    dice2: 0,
+                    dice3: 0,
+                    dice4: 0,
+                    dice5: 0
+                };
+
+                console.log(players);
+                for(i = 0; i <= players.length - 1; i++){
+                    var player = players[i];
+                    console.log(player);
+                    for(var j = 0; j <= player.round.length - 1; j++){
+                        var dice = player.round[j];
+                        result['dice' + dice] += 1;
+                    }
+                }
+                var resultHtml = '<div class="row text-center" style="margin-top: 50px; margin-bottom: 50px"><h2>Results</h2></div>' +
+                        '<div class="row">';
+
+                for(var i = 0; i <= 4; i++){
+                    resultHtml += '<div class="col-xs-2 ' + (i == 0?'col-xs-offset-1':'') +'">' +
+                            '<img class="img-responsive center-block img-rounded" src="/content/img/dice_'+ (i+1) +'.png">' +
+                            '</div>'
+                }
+
+                resultHtml += '<div class="col-xs-1"></div>' +
+                        '</div>';
+
+                resultHtml += '<div class="row">';
+
+                for(var i = 0; i <= 4; i++){
+                    var count = result['dice' + (i + 1)];
+                    resultHtml += '<div class="col-xs-2 text-center ' + (i == 0?'col-xs-offset-1':'') +'">' +
+                            '<h1><span class="label label-default">' + count + '</span></h1>' +
+                            '</div>'
+                }
+
+                resultHtml += '<div class="col-xs-1"></div>' +
+                        '</div>';
+
+                resultHtml += '<div class="row" style="margin-top: 50px"><button class="btn btn-info center-block btn-lg again-button">Again</button></div>';
+
+                if(resultHtml){
+                    $("#play-result").empty().html(resultHtml).show();
+                }
+
+                $('.again-button').on('click', function(e){
+                    e.preventDefault();
+                    socket.emit('gameRestart', {'roomId': roomId});
+                })
             }
-
-            if(playerHtml){
-                $("#player-list").empty().html(playerHtml);
-            }
-
-            $('.ready-button').on('click', function(){
-                var UID = $(this).data('id');
-                console.log($('.player_' + UID).find('.ready-status').text());
-                var oldStatus = $('.player_' + UID).find('.ready-status').text().toLowerCase() == 'ready'?1:0;
-                var newStatus = !oldStatus;
-
-                socket.emit('ready', {'player_id': UID, 'room_id': roomId, ready: newStatus});
-                console.log('emitted ready', {'player_id': $(this).data('id'), 'room_id': roomId, ready: newStatus});
-            });
         };
 
-        socket.on('updatePlayers', function(data){
-            console.log(data);
-            updateView(getPlayers(data));
-        });
 
-        socket.on('hello', function(data){
-            console.log(data);
+
+        socket.on('updatePlayers', function(data){
+            updateView(data);
         });
     });
 </script>
