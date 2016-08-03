@@ -458,6 +458,10 @@ app.get('/room/:id', function(req, res){
     res.render('room', {roomId: roomId, player: player});
 });
 
+app.get('/foobar', function(req, res){
+    res.render('admin', {rooms: rooms});
+});
+
 http.listen(3000, function(){
     console.log('listening on *:3000');
 });
