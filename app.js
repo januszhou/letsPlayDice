@@ -136,6 +136,7 @@ Room.prototype.waiting = function(){
     this.status = 'waiting';
     for(var i = 0; i <= this.players.length - 1; i++){
         this.players[i].round = [];
+        this.players[i].ready = false;
     }
 
     /**
@@ -308,7 +309,9 @@ app.post('/room', function(req, res){
 });
 
 io.on('connection', function(socket){
-    var updatePlayer = function(roomId){
+
+    var updatePlayer = function(roomId, only){
+        only = only || false;
         var room = rooms.getRoom(roomId);
         if(!room){
             return null;
@@ -319,7 +322,12 @@ io.on('connection', function(socket){
          */
         room.assignOwner();
 
-        io.in('room_' + roomId).emit('updatePlayers', room);
+        if(only){
+            console.log('only for that', socket.id);
+            io.to(socket.id).emit('updatePlayers', room);
+        } else {
+            io.in('room_' + roomId).emit('updatePlayers', room);
+        }
     };
     /**
      * Front-end emit room event when player join a room
@@ -399,7 +407,7 @@ io.on('connection', function(socket){
 
         room.waiting();
 
-        updatePlayer(req.roomId);
+        updatePlayer(req.roomId, true);
     });
 
     socket.on('disconnect', function(){
