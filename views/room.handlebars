@@ -104,7 +104,7 @@
                 var player = players[0];
 
                 var playingHtml =
-                        '<div class="row text-center" style="margin-top: 50px; margin-bottom: 100px"><h2>Your Round</h2></div>'
+                        '<div class="row text-center" style="margin-top: 50px; margin-bottom: 100px"><h2>Your Round, Happy Haunting</h2></div>'
                         + '<div class="row">';
 
 
@@ -116,7 +116,7 @@
                 playingHtml += '<div class="col-xs-1"></div>'
                         + '</div>'
                         + '<div class="row" style="margin-top: 100px">'
-                        + '<button class="btn btn-danger center-block btn-lg doubt-button">Doubt</button>'
+                        + '<button class="btn btn-danger center-block btn-lg doubt-button">I Doubt It !!!</button>'
                         + '</div>';
 
                 if(playingHtml){
@@ -149,7 +149,7 @@
                         result['dice' + dice] += 1;
                     }
                 }
-                var resultHtml = '<div class="row text-center" style="margin-top: 50px; margin-bottom: 50px"><h2>Results</h2></div>' +
+                var resultHtml = '<div class="row text-center" style="margin-top: 50px; margin-bottom: 50px"><h2>Here Comes The Truth</h2></div>' +
                         '<div class="row">';
 
                 for(var i = 0; i <= 4; i++){
@@ -173,7 +173,7 @@
                 resultHtml += '<div class="col-xs-1"></div>' +
                         '</div>';
 
-                resultHtml += '<div class="row" style="margin-top: 50px"><button class="btn btn-info center-block btn-lg again-button">Again</button></div>';
+                resultHtml += '<div class="row" style="margin-top: 50px"><button class="btn btn-info center-block btn-lg again-button">Make Another Game!</button></div>';
 
                 if(resultHtml){
                     $("#play-result").empty().html(resultHtml).show();
