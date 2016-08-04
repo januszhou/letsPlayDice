@@ -375,7 +375,7 @@ io.on('connection', function(socket){
 
         player.updateReady(ready);
 
-        updatePlayer(roomId, {broadcast: true});
+        updatePlayer(roomId);
 
     });
 
