@@ -313,6 +313,14 @@ io.on('connection', function(socket){
 
     var updatePlayer = function(roomId, option){
         option = option || {};
+        
+        var defaultOption = {
+            onlySender: false,
+            broadcast: false
+        };
+
+        underscore.extend(defaultOption, option);
+
         var room = rooms.getRoom(roomId);
         if(!room){
             return null;
@@ -323,8 +331,10 @@ io.on('connection', function(socket){
          */
         room.assignOwner();
 
-        if(option.onlySender !== undefined && option.onlySender){
+        if(option.onlySender){
             io.to(socket.id).emit('updatePlayers', room);
+        } else if(option.broadcast) {
+            socket.to('room_' + roomId).emit('updatePlayers', room);
         } else {
             io.in('room_' + roomId).emit('updatePlayers', room);
         }
@@ -365,7 +375,7 @@ io.on('connection', function(socket){
 
         player.updateReady(ready);
 
-        updatePlayer(roomId);
+        updatePlayer(roomId, {broadcast: true});
 
     });
 

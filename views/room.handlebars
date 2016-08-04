@@ -86,6 +86,18 @@
                     var oldStatus = $('.player_' + UID).find('.ready-status').text().toLowerCase() == 'ready'?1:0;
                     var newStatus = !oldStatus;
 
+                    var findClass = 'player_' + UID;
+                    var $readyStatus = $("." + findClass).find('.ready-status');
+                    if($readyStatus.hasClass('text-danger')){
+                        $readyStatus.removeClass('text-danger');
+                        $readyStatus.addClass('text-success');
+                        $readyStatus.text('Ready');
+                    } else {
+                        $readyStatus.removeClass('text-success');
+                        $readyStatus.addClass('text-danger');
+                        $readyStatus.text('Not Ready');
+                    }
+
                     socket.emit('ready', {'player_id': UID, 'room_id': roomId, ready: newStatus});
                 });
 
