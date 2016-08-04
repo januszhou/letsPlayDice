@@ -64,6 +64,7 @@ var Player = function(){
     this.ready = false;
     this.leave = false;
     this.socketId = null;
+    this.doubt = false;
 };
 
 Player.prototype.updateNick = function(nick){
@@ -310,8 +311,8 @@ app.post('/room', function(req, res){
 
 io.on('connection', function(socket){
 
-    var updatePlayer = function(roomId, only){
-        only = only || false;
+    var updatePlayer = function(roomId, option){
+        option = option || {};
         var room = rooms.getRoom(roomId);
         if(!room){
             return null;
@@ -322,8 +323,7 @@ io.on('connection', function(socket){
          */
         room.assignOwner();
 
-        if(only){
-            console.log('only for that', socket.id);
+        if(option.onlySender !== undefined && option.onlySender){
             io.to(socket.id).emit('updatePlayers', room);
         } else {
             io.in('room_' + roomId).emit('updatePlayers', room);
@@ -393,6 +393,9 @@ io.on('connection', function(socket){
             return null;
         }
 
+        var doubter = room.getPlayer(req.doubter);
+        doubter.doubt = true;
+
         room.result();
 
         updatePlayer(req.roomId);
@@ -407,7 +410,7 @@ io.on('connection', function(socket){
 
         room.waiting();
 
-        updatePlayer(req.roomId, true);
+        updatePlayer(req.roomId, {onlySender: true});
     });
 
     socket.on('disconnect', function(){

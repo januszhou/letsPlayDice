@@ -125,7 +125,7 @@
 
                 $('.doubt-button').on('click', function(e){
                     e.preventDefault();
-                    socket.emit('gameResult', {'roomId': roomId});
+                    socket.emit('gameResult', {'roomId': roomId, 'doubter': player.UID});
                 });
 
             } else if(data.status == 'result'){
@@ -133,45 +133,98 @@
                 $("#playing").empty().hide();
 
                 var result = {
-                    dice1: 0,
-                    dice2: 0,
-                    dice3: 0,
-                    dice4: 0,
-                    dice5: 0
+                    summary: {
+                        dice1: 0,
+                        dice2: 0,
+                        dice3: 0,
+                        dice4: 0,
+                        dice5: 0,
+                        dice6: 0
+                    },
+                    detail:{
+
+                    }
                 };
+
+                var doubterName = null;
 
                 console.log(players);
                 for(i = 0; i <= players.length - 1; i++){
                     var player = players[i];
-                    console.log(player);
+                    if(player.doubt){
+                        doubterName = player.nickName;
+                    }
+
+                    result['detail'][player.nickName] = {dice1: 0, dice2: 0, dice3: 0, dice4: 0, dice5: 0, dice6: 0};
+
                     for(var j = 0; j <= player.round.length - 1; j++){
                         var dice = player.round[j];
-                        result['dice' + dice] += 1;
+                        result['summary']['dice' + dice] += 1;
+                        result['detail'][player.nickName]['dice' + dice] += 1;
                     }
                 }
-                var resultHtml = '<div class="row text-center" style="margin-top: 50px; margin-bottom: 50px"><h2>Here Comes The Truth</h2></div>' +
-                        '<div class="row">';
+                var resultHtml = '<div class="row text-center" style="margin-top: 30px; margin-bottom: 30px"><h2>Here Comes The Truth</h2></div>';
+                resultHtml +=  '<div class="row text-center" style="margin-bottom: 20px"><h3 class="text-danger">' + doubterName + ' doubt it</h3></div>';
 
-                for(var i = 0; i <= 4; i++){
-                    resultHtml += '<div class="col-xs-2 ' + (i == 0?'col-xs-offset-1':'') +'">' +
-                            '<img class="img-responsive center-block img-rounded" src="/content/img/dice_'+ (i+1) +'.png">' +
+                resultHtml += '<div class="row" style="padding-left: 20px;padding-right: 20px;">';
+
+                for(var i = 0; i <= 5; i++){
+                    resultHtml += '<div class="col-xs-2">' +
+                            '<img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_'+ (i+1) +'.png">' +
                             '</div>'
                 }
 
-                resultHtml += '<div class="col-xs-1"></div>' +
-                        '</div>';
+                resultHtml += '</div>';
 
-                resultHtml += '<div class="row">';
+                resultHtml += '<div class="row" style="padding-left: 20px;padding-right: 20px;">';
 
-                for(var i = 0; i <= 4; i++){
-                    var count = result['dice' + (i + 1)];
-                    resultHtml += '<div class="col-xs-2 text-center ' + (i == 0?'col-xs-offset-1':'') +'">' +
-                            '<h1><span class="label label-default">' + count + '</span></h1>' +
+                for(var i = 0; i <= 5; i++){
+                    var count = result['summary']['dice' + (i + 1)];
+                    resultHtml += '<div class="col-xs-2 text-center">' +
+                            '<p><span class="label label-default">' + count + '</span></p>' +
                             '</div>'
                 }
 
-                resultHtml += '<div class="col-xs-1"></div>' +
-                        '</div>';
+                resultHtml += '</div>';
+
+                resultHtml += '<div class="row"> \
+                                    <div class="col-xs-12"> \
+                                        <table class="table table-responsive"> \
+                                            <thead> \
+                                            <tr> \
+                                                <th class="text-center"><span class="label label-default">Players</span></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_1.png"></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_2.png"></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_3.png"></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_4.png"></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_5.png"></th> \
+                                                <th><img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_6.png"></th> \
+                                            </tr> \
+                                            </thead> \
+                                            <tbody>';
+
+                var firstList = true;
+
+                for(var i in result['detail']){
+                    if(firstList){
+                        resultHtml += '<tr class="success"><td class="text-center"><span class="label label-default">You</span></td>';
+                    } else {
+                        resultHtml += '<tr><td class="text-center"><span class="label label-default">'+ i +'</span></td>';
+                    }
+
+                    for(var j in result['detail'][i]){
+                        resultHtml += '<td class="text-center"><span class="label label-default">' + result['detail'][i][j] + '</span></td>'
+                    }
+
+                    firstList = false;
+
+                    resultHtml += '</tr>';
+                }
+
+                resultHtml += '</tbody> \
+                            </table> \
+                        </div> \
+                    </div>';
 
                 resultHtml += '<div class="row" style="margin-top: 50px"><button class="btn btn-info center-block btn-lg again-button">Make Another Game!</button></div>';
 
