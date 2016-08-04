@@ -306,14 +306,14 @@ setInterval(function() {
  */
 app.post('/room', function(req, res){
     var roomId = req.body.room;
-    res.redirect('/room/' + room.id);
+    res.redirect('/room/' + roomId);
 });
 
 io.on('connection', function(socket){
 
     var updatePlayer = function(roomId, option){
         option = option || {};
-        
+
         var defaultOption = {
             onlySender: false,
             broadcast: false
