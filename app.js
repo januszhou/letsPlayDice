@@ -21,6 +21,7 @@ app.use('/bower_components', express.static('bower_components'));
 app.use('/node_modules', express.static('node_modules'));
 app.use('/content', express.static('content'));
 
+
 app.use(cookieParser());
 
 app.engine('handlebars', exphbs({
@@ -28,6 +29,7 @@ app.engine('handlebars', exphbs({
     helpers: { json: function (context) { return JSON.stringify(context); } }
 }));
 app.set('view engine', 'handlebars');
+
 
 app.get('/', function(req, res){
     res.render('home');
@@ -79,8 +81,8 @@ Player.prototype.updateSocket = function(socketId){
     this.socketId = socketId;
 };
 
-Player.prototype.updateReady = function(ready){
-    this.ready = ready?true:false;
+Player.prototype.updateReady = function(){
+    this.ready = !this.ready;
 };
 
 Player.prototype.createRound = function(){
@@ -316,7 +318,8 @@ io.on('connection', function(socket){
 
         var defaultOption = {
             onlySender: false,
-            broadcast: false
+            broadcast: false,
+            player: null
         };
 
         underscore.extend(defaultOption, option);
@@ -335,6 +338,8 @@ io.on('connection', function(socket){
             io.to(socket.id).emit('updatePlayers', room);
         } else if(option.broadcast) {
             socket.to('room_' + roomId).emit('updatePlayers', room);
+        } else if(option.player){
+            io.in('room_' + roomId).emit('playerReady', option.player);
         } else {
             io.in('room_' + roomId).emit('updatePlayers', room);
         }
@@ -367,15 +372,13 @@ io.on('connection', function(socket){
         console.log('ready', req);
         var roomId = req['room_id'];
         var playerId = req['player_id'];
-        var ready = req['ready'];
-        console.log('update player is ready');
 
         var room = rooms.getRoom(roomId);
         var player = room.getPlayer(playerId);
 
-        player.updateReady(ready);
+        player.updateReady();
 
-        updatePlayer(roomId);
+        updatePlayer(roomId, {player: player});
 
     });
 

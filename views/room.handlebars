@@ -6,12 +6,79 @@
         <!--<a class="text-right" href="/"><span class="glyphicon glyphicon-remove-sign"></span> Leave</a>-->
     </nav>
 
-    <div class="row" id="player-list"></div>
-    <div class="row" id="playing"></div>
-    <div class="row" id="play-result"></div>
+    <script id="player-partial" type="text/x-handlebars-template">
+        <div class="row \{{readyClass}} row-eq-height">
+            <div class="col-xs-5">
+                <img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="display: inline; width: 50px">
+                <span class="label label-default">\{{nickName}}</span>
+            </div>
+            <div class="col-xs-6 text-center" style="padding-top:10px">
+                \{{#if yourself}}
+                <button class="btn btn-info ready-button" data-id="\{{UID}}">Ready</button>
+                    \{{#if owner}}
+                    <button class="btn btn-success start-button" disabled = "disabled">Start</button>
+                    \{{/if}}
+                \{{/if}}
+            </div>
+        </div>
+    </script>
+
+    <script id="playerCell" type="text/x-handlebars-template">
+        <div class="player_\{{UID}}">
+            \{{> player }}
+        </div>
+    </script>
+
+    <div id="player-list"></div>
+    <div id="playing"></div>
+    <div id="play-result"></div>
 </div>
 <script>
     $(document).ready(function(){
+        var factorPlayer = function(data){
+            var cookie = $.cookie('dice');
+            var currentUserId = cookie.player.UID;
+
+            data['yourself'] = false;
+
+            if(currentUserId == data.UID){
+                data['nickName'] = 'You';
+                data['yourself'] = true;
+            }
+
+            if(data['ready']){
+                data['readyClass'] = 'bg-success';
+            } else {
+                data['readyClass'] = 'bg-danger';
+            }
+
+            return data;
+        };
+
+        var addPlayers = function(data, option){
+            option = option || {};
+
+            var defaultOption = {
+                update: false
+            };
+
+            $.extend(defaultOption, option);
+
+            var compiledTemplate = Handlebars.compile($('#playerCell').html());
+            Handlebars.registerPartial("player", $("#player-partial").html());
+
+            data = factorPlayer(data);
+
+            if(option.update){
+                console.log('this is update');
+
+                $(".player_" + data.UID).html(compiledTemplate(data));
+            } else {
+                $('#player-list').append(compiledTemplate(data));
+            }
+        };
+
+
         $.cookie.json = true;
         var socket = io();
         var roomId = '{{ roomId }}';
@@ -22,6 +89,10 @@
         socket.on('connect', function(){
             var socketId = socket.id;
             socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID});
+        });
+
+        socket.on('playerReady', function(data){
+            addPlayers(data, {update: true});
         });
 
         var getPlayers = function(data){
@@ -42,64 +113,28 @@
             return data;
         };
 
+        $(document).on('click', '.ready-button', function(){
+            var UID = $(this).data('id');
+
+            socket.emit('ready', {'player_id': UID, 'room_id': roomId});
+        });
+
         var updateView = function(data){
             var players = getPlayers(data.players);
             if(data.status == 'waiting'){
                 $("#playing").empty().hide();
                 $("#play-result").empty().hide();
+                $("#player-list").empty();
 
-                var playerHtml = '';
                 var allReady = true;
                 for(var i = 0; i <= players.length - 1; i++){
                     if(!players[i]){
                         continue;
                     }
 
-                    allReady &= players[i].ready;
-                    var readyClass = players[i]['ready']? 'text-success': 'text-danger';
-                    var readyText = players[i]['ready']? 'Ready': 'Not Ready';
-                    var readyButton = (i == 0)?'<button class="btn btn-info ready-button" data-id=' + players[i]['UID'] + ' style="width: 100px">Ready</button>': '';
-                    var ownerButton = (i == 0 && players[i].owner)?'<div><button class="btn btn-success start-button" style="width: 100px; margin-top: 10px;" disabled = "disabled">Start</button></div>':'';
-                    var selfClass = (i == 0)?'col-xs-6 col-xs-offset-3': 'col-xs-6';
-                    playerHtml +=
-                            '<div class="'+ selfClass +' player_' + players[i]['UID'] +'">'
-                            + '<div class="panel panel-default">'
-                            + '<div class="panel-heading text-center">' + players[i]['nickName'] +'</div>'
-                            + '<div class="panel-body text-center">'
-                            + '<div class="' + readyClass +' ready-status">' + readyText + '</div>'
-                            + '<img src="/content/img/user_1.png" class="img-circle img-responsive center-block" style="width: 100px;">'
-                            + '<div>'
-                            + readyButton
-                            + '</div>'
-                            + ownerButton
-                            + '</div>'
-                            + '</div>'
-                            + '</div>';
+                    addPlayers(players[i]);
                 }
 
-                if(playerHtml){
-                    $("#player-list").empty().html(playerHtml).show();
-                }
-
-                $('.ready-button').on('click', function(){
-                    var UID = $(this).data('id');
-                    var oldStatus = $('.player_' + UID).find('.ready-status').text().toLowerCase() == 'ready'?1:0;
-                    var newStatus = !oldStatus;
-
-                    var findClass = 'player_' + UID;
-                    var $readyStatus = $("." + findClass).find('.ready-status');
-                    if($readyStatus.hasClass('text-danger')){
-                        $readyStatus.removeClass('text-danger');
-                        $readyStatus.addClass('text-success');
-                        $readyStatus.text('Ready');
-                    } else {
-                        $readyStatus.removeClass('text-success');
-                        $readyStatus.addClass('text-danger');
-                        $readyStatus.text('Not Ready');
-                    }
-
-                    socket.emit('ready', {'player_id': UID, 'room_id': roomId, ready: newStatus});
-                });
 
                 if(allReady){
                     $('.start-button')
