@@ -82,17 +82,32 @@
         $.cookie.json = true;
         var socket = io();
         var roomId = '{{ roomId }}';
+        var room = {{{json room}}};
         var player = {{{json player}}};
+        var newPlayer = '{{ newPlayer }}' == 'true';
 
         $.cookie('dice', {roomId: roomId, player: player});
 
         socket.on('connect', function(){
             var socketId = socket.id;
-            socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID});
+            socket.emit('join', {roomId: roomId, socketId: socketId, playerUID: player.UID, newPlayer: newPlayer});
         });
 
         socket.on('playerReady', function(data){
             addPlayers(data, {update: true});
+        });
+
+        socket.on('allReady', function(){
+            $('.start-button').prop('disabled', false);
+        });
+
+        socket.on('allNotReady', function(){
+            $('.start-button').prop('disabled', true);
+        });
+
+        socket.on('newPlayer', function(data){
+            console.log('add new player');
+            addPlayers(data);
         });
 
         var getPlayers = function(data){
@@ -119,6 +134,13 @@
             socket.emit('ready', {'player_id': UID, 'room_id': roomId});
         });
 
+        $(document).on('click', '.start-button', function(e){
+            e.preventDefault();
+            socket.emit('gameStart', {'roomId': roomId});
+        });
+
+//        var existingPlayers = [];
+
         var updateView = function(data){
             var players = getPlayers(data.players);
             if(data.status == 'waiting'){
@@ -132,18 +154,15 @@
                         continue;
                     }
 
+                    allReady &= players[i].ready;
+
                     addPlayers(players[i]);
                 }
 
-
                 if(allReady){
-                    $('.start-button')
-                        .prop('disabled', null)
-                        .on('click', function(e){
-                            e.preventDefault();
-                            socket.emit('gameStart', {'roomId': roomId});
-                        });
+                    $('.start-button').prop('disabled', false);
                 }
+
             } else if(data.status == 'playing'){
                 $("#player-list").empty().hide();
                 $("#play-result").empty().hide();
@@ -286,7 +305,7 @@
             }
         };
 
-
+        updateView(room);
 
         socket.on('updatePlayers', function(data){
             updateView(data);

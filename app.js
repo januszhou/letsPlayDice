@@ -190,20 +190,32 @@ Room.prototype.isAuthorized = function(){
     // Start with no password
 };
 
-Room.prototype.assignOwner = function(){
+Room.prototype.findOrAssignOwner = function(){
      var isFindOwner = false;
 
     for(var i = 0; i<=this.players.length - 1; i++){
         if(this.players[i].owner){
             isFindOwner = true;
+            return this.players[i];
         }
     }
 
     if(!isFindOwner){
         if(this.players.length){
             this.players[0].owner = true;
+            return this.players[0];
         }
     }
+};
+
+Room.prototype.isReady = function(){
+    for(var i = 0; i<=this.players.length - 1; i++){
+        if(!this.players[i].ready){
+            return false;
+        }
+    }
+
+    return true;
 };
 
 
@@ -319,7 +331,10 @@ io.on('connection', function(socket){
         var defaultOption = {
             onlySender: false,
             broadcast: false,
-            player: null
+            player: null,
+            new: false,
+            ready: false,
+            start: false
         };
 
         underscore.extend(defaultOption, option);
@@ -332,14 +347,25 @@ io.on('connection', function(socket){
         /**
          * Before we update players, we assign owner
          */
-        room.assignOwner();
+        room.findOrAssignOwner();
 
         if(option.onlySender){
             io.to(socket.id).emit('updatePlayers', room);
         } else if(option.broadcast) {
             socket.to('room_' + roomId).emit('updatePlayers', room);
         } else if(option.player){
-            io.in('room_' + roomId).emit('playerReady', option.player);
+            if(option.ready){
+                io.in('room_' + roomId).emit('playerReady', option.player);
+            }
+
+            if(option.new){
+                socket.to('room_' + roomId).emit('newPlayer', option.player);
+            }
+
+            if(option.start){
+                io.in('room_' + roomId).emit('allReady', option.player);
+            }
+
         } else {
             io.in('room_' + roomId).emit('updatePlayers', room);
         }
@@ -378,7 +404,13 @@ io.on('connection', function(socket){
 
         player.updateReady();
 
-        updatePlayer(roomId, {player: player});
+        updatePlayer(roomId, {player: player, ready: true});
+
+        if(room.isReady()){
+            io.in('room_' + roomId).emit('allReady');
+        } else {
+            io.in('room_' + roomId).emit('allNotReady');
+        }
 
     });
 
@@ -479,7 +511,7 @@ app.get('/room/:id', function(req, res){
         room.addPlayer(player);
     }
 
-    res.render('room', {roomId: roomId, player: player});
+    res.render('room', {roomId: roomId, player: player, room: room, newPlayer: !existPlayer});
 });
 
 app.get('/foobar', function(req, res){
