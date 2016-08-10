@@ -124,6 +124,7 @@ Room.prototype.start = function(){
     this.status = 'playing';
     for(var i = 0; i <= this.players.length - 1; i++){
         this.players[i].createRound();
+        this.players[i].ready = false;
     }
     this.games += 1;
 };
@@ -135,11 +136,10 @@ Room.prototype.result = function(){
     this.status = 'result';
 };
 
-Room.prototype.waiting = function(){
+Room.prototype.resetRound = function(){
     this.status = 'waiting';
     for(var i = 0; i <= this.players.length - 1; i++){
         this.players[i].round = [];
-        this.players[i].ready = false;
     }
 
     /**
@@ -453,7 +453,7 @@ io.on('connection', function(socket){
             return null;
         }
 
-        room.waiting();
+        room.resetRound();
 
         updatePlayer(req.roomId, {onlySender: true});
     });

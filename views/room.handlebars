@@ -144,9 +144,10 @@
         var updateView = function(data){
             var players = getPlayers(data.players);
             if(data.status == 'waiting'){
+                console.log('Update players', players);
                 $("#playing").empty().hide();
                 $("#play-result").empty().hide();
-                $("#player-list").empty();
+                $("#player-list").empty().show();
 
                 var allReady = true;
                 for(var i = 0; i <= players.length - 1; i++){
