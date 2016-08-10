@@ -118,6 +118,7 @@ var Room = function(id){
     this.password = false;
     this.games = 0;
     this.id = id;
+    this.roundResult = false;
 };
 
 Room.prototype.start = function(){
@@ -126,6 +127,33 @@ Room.prototype.start = function(){
         this.players[i].createRound();
         this.players[i].ready = false;
     }
+
+    this.roundResult = {
+        summary: {
+            dice1: 0,
+            dice2: 0,
+            dice3: 0,
+            dice4: 0,
+            dice5: 0,
+            dice6: 0
+        },
+        detail:{
+
+        }
+    };
+
+    for(i = 0; i <= this.players.length - 1; i++){
+        var player = this.players[i];
+
+        this.roundResult.detail[player.nickName] = {dice1: 0, dice2: 0, dice3: 0, dice4: 0, dice5: 0, dice6: 0};
+
+        for(var j = 0; j <= player.round.length - 1; j++){
+            var dice = player.round[j];
+            this.roundResult.summary['dice' + dice] += 1;
+            this.roundResult.detail[player.nickName]['dice' + dice] += 1;
+        }
+    }
+
     this.games += 1;
 };
 

@@ -23,6 +23,62 @@
         </div>
     </script>
 
+    <script id="last-round" type="text/x-handlebars-template">
+        <a class="btn btn-primary" role="button" data-toggle="collapse" href="#last-round-collapse" aria-expanded="false" aria-controls="collapseExample">Last Round</a>
+        <div id="last-round-collapse" class="collapse">
+            <div class="row" style="padding-left: 20px;padding-right: 20px;">
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_1.png">
+                </div>
+
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_2.png">
+                </div>
+
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_3.png">
+                </div>
+
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_4.png">
+                </div>
+
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_5.png">
+                </div>
+
+                <div class="col-xs-2">
+                    <img width="30px" class="img-responsive center-block img-rounded" src="/content/img/dice_6.png">
+                </div>
+            </div>
+            <div class="row" style="padding-left: 20px;padding-right: 20px;">
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice1}}</span></p>
+                </div>
+
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice2}}</span></p>
+                </div>
+
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice3}}</span></p>
+                </div>
+
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice4}}</span></p>
+                </div>
+
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice5}}</span></p>
+                </div>
+
+                <div class="col-xs-2 text-center">
+                    <p><span class="label label-default">\{{summary.dice6}}</span></p>
+                </div>
+            </div>
+        </div>
+    </script>
+
     <script id="playerCell" type="text/x-handlebars-template">
         <div class="player_\{{UID}}">
             \{{> player }}
@@ -35,6 +91,12 @@
 </div>
 <script>
     $(document).ready(function(){
+        Handlebars.registerPartial("player", $("#player-partial").html());
+
+        var playerListTemplate = Handlebars.compile($('#playerCell').html());
+
+        var lastRoundTemplate = Handlebars.compile($('#last-round').html());
+
         var factorPlayer = function(data){
             var cookie = $.cookie('dice');
             var currentUserId = cookie.player.UID;
@@ -64,17 +126,14 @@
 
             $.extend(defaultOption, option);
 
-            var compiledTemplate = Handlebars.compile($('#playerCell').html());
-            Handlebars.registerPartial("player", $("#player-partial").html());
-
             data = factorPlayer(data);
 
             if(option.update){
                 console.log('this is update');
 
-                $(".player_" + data.UID).html(compiledTemplate(data));
+                $(".player_" + data.UID).html(playerListTemplate(data));
             } else {
-                $('#player-list').append(compiledTemplate(data));
+                $('#player-list').append(playerListTemplate(data));
             }
         };
 
@@ -148,6 +207,10 @@
                 $("#playing").empty().hide();
                 $("#play-result").empty().hide();
                 $("#player-list").empty().show();
+
+                if(data.roundResult){
+                    $('#player-list').append(lastRoundTemplate(data.roundResult));
+                }
 
                 var allReady = true;
                 for(var i = 0; i <= players.length - 1; i++){
