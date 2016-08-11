@@ -85,6 +85,8 @@
         </div>
     </script>
 
+    <h3 class="text-center waiting-next" style="display: none">Please wait for next round...</h3>
+
     <div id="player-list"></div>
     <div id="playing"></div>
     <div id="play-result"></div>
@@ -169,6 +171,10 @@
             addPlayers(data);
         });
 
+        socket.on('oldPlayer', function(){
+            newPlayer = false;
+        });
+
         var getPlayers = function(data){
             var cookie = $.cookie('dice');
             var currentUserId = cookie.player.UID;
@@ -202,6 +208,20 @@
 
         var updateView = function(data){
             var players = getPlayers(data.players);
+            $('.waiting-next').hide();
+
+            if(data.status !== 'waiting' && data.waitingPlayers.length){
+                var cookie = $.cookie('dice');
+                var currentUserId = cookie.player.UID;
+                for(var i = 0; i <= data.waitingPlayers.length - 1; i++){
+                    if(currentUserId == data.waitingPlayers[i]['UID']){
+                        console.log('found waiting player');
+                        $('.waiting-next').show();
+                        return;
+                    }
+                }
+            }
+
             if(data.status == 'waiting'){
                 console.log('Update players', players);
                 $("#playing").empty().hide();

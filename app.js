@@ -60,7 +60,7 @@ var Player = function(){
     };
 
     this.nickName = randomNick(5);
-    this.round = null;
+    this.round = [];
     this.owner = false;
     this.UID = randomNick(20);
     this.ready = false;
@@ -119,6 +119,7 @@ var Room = function(id){
     this.games = 0;
     this.id = id;
     this.roundResult = false;
+    this.waitingPlayers = [];
 };
 
 Room.prototype.start = function(){
@@ -179,20 +180,24 @@ Room.prototype.addPlayer = function(player){
     this.players.push(player);
 };
 
+Room.prototype.addWaitingPlayer = function(player){
+    this.waitingPlayers.push(player);
+};
+
 Room.prototype.getPlayer = function(UID){
-    if(this.players.length){
-        for(var i = 0; i<=this.players.length - 1; i++){
-            if(this.players[i].UID == UID){
-                var player = this.players[i];
-                if(player instanceof Player){
-                    return player;
-                } else {
-                    player.__proto__ = Player.prototype;
-                    return player;
-                }
+    var players = this.players.concat(this.waitingPlayers);
+    for(var i = 0; i<=players.length - 1; i++){
+        if(players[i].UID == UID){
+            var player = players[i];
+            if(player instanceof Player){
+                return player;
+            } else {
+                player.__proto__ = Player.prototype;
+                return player;
             }
         }
     }
+
 
     return false;
 };
@@ -244,6 +249,11 @@ Room.prototype.isReady = function(){
     }
 
     return true;
+};
+
+Room.prototype.joinWaitingPlayers = function(){
+    this.players = this.players.concat(this.waitingPlayers);
+    this.waitingPlayers = [];
 };
 
 
@@ -362,7 +372,8 @@ io.on('connection', function(socket){
             player: null,
             new: false,
             ready: false,
-            start: false
+            start: false,
+            startWaitingPlayers: false
         };
 
         underscore.extend(defaultOption, option);
@@ -396,6 +407,12 @@ io.on('connection', function(socket){
 
         } else {
             io.in('room_' + roomId).emit('updatePlayers', room);
+        }
+
+        if(option.startWaitingPlayers) {
+            for (var i = 0; i <= option.startWaitingPlayers.length; i++) {
+                io.to(option.startWaitingPlayers[i]['socketId']).emit('updatePlayers', room);
+            }
         }
     };
     /**
@@ -483,7 +500,11 @@ io.on('connection', function(socket){
 
         room.resetRound();
 
-        updatePlayer(req.roomId, {onlySender: true});
+        var waitingPlayers = room.waitingPlayers;
+
+        room.joinWaitingPlayers();
+
+        updatePlayer(req.roomId, {onlySender: true, startWaitingPlayers: waitingPlayers});
     });
 
     socket.on('disconnect', function(){
@@ -536,7 +557,11 @@ app.get('/room/:id', function(req, res){
     }
 
     if(!existPlayer){
-        room.addPlayer(player);
+        if(room.status !== 'waiting'){
+            room.addWaitingPlayer(player);
+        } else {
+            room.addPlayer(player);
+        }
     }
 
     res.render('room', {roomId: roomId, player: player, room: room, newPlayer: !existPlayer});
